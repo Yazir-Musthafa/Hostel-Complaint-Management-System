@@ -47,8 +47,8 @@ A comprehensive web application for managing hostel complaints with role-based a
 │   │   ├── alert-dialog.tsx
 │   │   ├── sonner.tsx
 │   │   └── ... (other ui components)
-│   └── figma/
-│       └── ImageWithFallback.tsx # Protected image component
+│  
+│
 └── styles/
     └── globals.css            # Global styles and CSS variables
 ```

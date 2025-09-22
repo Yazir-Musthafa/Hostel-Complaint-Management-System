@@ -37,7 +37,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from './ui/label';
 import { toast } from 'sonner@2.0.3';
 
-// Import new components
 import { PageHeader } from './shared/PageHeader';
 import { AdminSidebar } from './admin/AdminSidebar';
 import { ComplaintDetailsModal } from './admin/ComplaintDetailsModal';
@@ -49,7 +48,7 @@ import { SystemSettingsSection } from './admin/SystemSettingsSection';
 import { StudentManagementSection } from './admin/StudentManagementSection';
 import { ParentFeedbackSection } from './admin/ParentFeedbackSection';
 
-// Import hooks and types
+
 import { useComplaints } from '../hooks/useComplaints';
 import { useStudents } from '../hooks/useStudents';
 import { User as UserType, Complaint, FilterOptions } from '../types';
