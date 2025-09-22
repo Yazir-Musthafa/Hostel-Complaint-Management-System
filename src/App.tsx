@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Toaster } from 'sonner@2.0.3';
+import { Toaster } from 'sonner';
 import LoginScreen from './components/LoginScreen';
 import AdminDashboard from './components/AdminDashboard';
 import StudentDashboard from './components/StudentDashboard';
