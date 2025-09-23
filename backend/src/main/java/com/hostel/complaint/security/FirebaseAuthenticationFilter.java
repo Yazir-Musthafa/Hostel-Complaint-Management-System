@@ -107,6 +107,7 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
         // Skip authentication for public endpoints
         return path.startsWith("/api/auth/register") ||
                path.startsWith("/api/auth/login") ||
+               path.startsWith("/api/auth/login-with-token") ||
                path.startsWith("/api/public") ||
                path.equals("/api/health") ||
                path.startsWith("/api/auth/verify-token");

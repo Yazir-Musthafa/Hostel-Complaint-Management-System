@@ -6,24 +6,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Users, Shield, User, Phone, UserPlus } from 'lucide-react';
-// Firebase imports
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
-
-// Firebase config (replace with your actual config)
-const firebaseConfig = {
-  apiKey: "AIzaSyB3qIOimhNmwfGNonJ6sMxsYykQpzSASVs",
-  authDomain: "hostelcomplaint-dff1d.firebaseapp.com",
-  projectId: "hostelcomplaint-dff1d",
-  storageBucket: "hostelcomplaint-dff1d.appspot.com",
-  messagingSenderId: "784156885988",
-  appId: "1:784156885988:web:1a38457965cd51d836fdf1",
-  measurementId: "G-YH40BXJJDX"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import authService from '../services/authService';
 
 // Utility to get cached user data
 function getCachedUser() {
@@ -60,6 +43,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       onLogin({ token: student }, 'student');
     }
   }, [selectedRole, onLogin]);
+
   const [signupData, setSignupData] = useState({
     fullName: '',
     email: '',
@@ -71,6 +55,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleRoleSelection = (role: 'admin' | 'student' | 'parent') => {
     setSelectedRole(role);
@@ -115,89 +100,72 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
-      const user = userCredential.user;
-      const token = await user.getIdToken();
-
-      // Fetch user role from Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      let userRole: 'admin' | 'student' | 'parent' = 'student'; // default to student
-      let userData: any = {
+      const response = await authService.login({
         email: loginData.email,
-        mobile: loginData.mobile,
-        name: user.displayName || loginData.email.split('@')[0],
-        token: token
-      };
+        password: loginData.password
+      });
 
-      if (userDoc.exists()) {
-        const firestoreData = userDoc.data();
-        userRole = firestoreData.role || 'student';
-        userData = { ...userData, ...firestoreData };
-      } else {
-        // If user document doesn't exist, create one with student role
-        const newUserData = {
-          email: loginData.email,
-          mobile: loginData.mobile,
-          name: user.displayName || loginData.email.split('@')[0],
-          role: 'student',
-          createdAt: new Date().toISOString()
+      if (response.success && response.user) {
+        const userRole = response.user.role as 'admin' | 'student' | 'parent';
+        
+        // Create user data object for onLogin callback
+        const userData = {
+          ...response.user,
+          token: response.token,
+          mobile: loginData.mobile || response.user.mobile
         };
-        await setDoc(userDocRef, newUserData);
-        userData = { ...userData, ...newUserData };
-      }
 
-      // Cache complete user data based on determined role
-      userData.role = userRole;
-      if (userRole === 'admin') {
-        localStorage.setItem('cachedAdminUser', JSON.stringify(userData));
-      } else if (userRole === 'student') {
-        localStorage.setItem('cachedStudentUser', JSON.stringify(userData));
+        onLogin(userData, userRole);
+      } else {
+        setError(response.error || 'Login failed');
       }
-
-      onLogin(userData, userRole);
     } catch (err: any) {
       setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
     if (signupData.password !== signupData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, signupData.email, signupData.password);
-      const user = userCredential.user;
-      const token = await user.getIdToken();
 
-      // Create user document in Firestore with student role
-      const userDocRef = doc(db, 'users', user.uid);
-      const userData = {
-        email: signupData.email,
-        mobile: signupData.mobile,
+    setLoading(true);
+
+    try {
+      const response = await authService.register({
         name: signupData.fullName,
+        email: signupData.email,
+        password: signupData.password,
+        mobile: signupData.mobile,
         studentId: signupData.studentId,
         roomNumber: signupData.roomNumber,
-        block: signupData.block,
-        role: 'student', // Only students can sign up
-        createdAt: new Date().toISOString(),
-        token: token
-      };
+        block: signupData.block
+      });
 
-      // Store user data in Firestore
-      await setDoc(userDocRef, userData);
+      if (response.success && response.user) {
+        // Create user data object for onLogin callback
+        const userData = {
+          ...response.user,
+          token: response.token
+        };
 
-      // Cache complete user data for student
-      localStorage.setItem('cachedStudentUser', JSON.stringify(userData));
-
-      onLogin(userData, 'student');
+        onLogin(userData, 'student');
+      } else {
+        setError(response.error || 'Registration failed');
+      }
     } catch (err: any) {
-      setError(err.message || 'Signup failed');
+      setError(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -360,11 +328,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
+                    disabled={loading}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="mobile" className="text-responsive-sm font-medium">Mobile Number</Label>
+                  <Label htmlFor="mobile" className="text-responsive-sm font-medium">Mobile Number (Optional)</Label>
                   <Input
                     id="mobile"
                     type="tel"
@@ -372,7 +341,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     value={loginData.mobile}
                     onChange={(e) => setLoginData({ ...loginData, mobile: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
-                    required
+                    disabled={loading}
                   />
                 </div>
 
@@ -386,13 +355,18 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
+                    disabled={loading}
                   />
                 </div>
 
                 {error && <div className="text-destructive text-sm font-medium">{error}</div>}
 
-                <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground btn-professional font-semibold">
-                  Login to Account
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground btn-professional font-semibold"
+                  disabled={loading}
+                >
+                  {loading ? 'Logging in...' : 'Login to Account'}
                 </Button>
 
                 <div className="text-center space-y-3 pt-2">
@@ -401,6 +375,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     variant="ghost"
                     onClick={() => setShowManualLogin(false)}
                     className="w-full text-muted-foreground hover:text-foreground"
+                    disabled={loading}
                   >
                     ← Back to Role Selection
                   </Button>
@@ -442,6 +417,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                       onChange={(e) => setSignupData({ ...signupData, fullName: e.target.value })}
                       className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                       required
+                      disabled={loading}
                     />
                   </div>
 
@@ -454,6 +430,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                       onChange={(e) => setSignupData({ ...signupData, studentId: e.target.value })}
                       className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -468,6 +445,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
+                    disabled={loading}
                   />
                 </div>
 
@@ -481,6 +459,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setSignupData({ ...signupData, mobile: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
+                    disabled={loading}
                   />
                 </div>
 
@@ -494,6 +473,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                       onChange={(e) => setSignupData({ ...signupData, roomNumber: e.target.value })}
                       className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                       required
+                      disabled={loading}
                     />
                   </div>
 
@@ -502,6 +482,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     <Select
                       value={signupData.block}
                       onValueChange={(value) => setSignupData({ ...signupData, block: value })}
+                      disabled={loading}
                     >
                       <SelectTrigger className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12">
                         <SelectValue placeholder="Select Block" />
@@ -526,6 +507,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
+                    disabled={loading}
                   />
                 </div>
 
@@ -539,6 +521,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
+                    disabled={loading}
                   />
                   {signupData.password !== signupData.confirmPassword && signupData.confirmPassword && (
                     <p className="text-responsive-sm text-destructive font-medium">Passwords do not match</p>
@@ -550,9 +533,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 <Button 
                   type="submit" 
                   className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground btn-professional font-semibold"
-                  disabled={signupData.password !== signupData.confirmPassword}
+                  disabled={signupData.password !== signupData.confirmPassword || loading}
                 >
-                  Create Student Account
+                  {loading ? 'Creating Account...' : 'Create Student Account'}
                 </Button>
 
                 <div className="text-center pt-2">
@@ -560,6 +543,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     type="button"
                     onClick={() => setShowSignup(false)}
                     className="text-responsive-sm text-muted-foreground hover:text-foreground font-medium underline-offset-4 hover:underline transition-colors"
+                    disabled={loading}
                   >
                     Already have an account? Login here
                   </button>
