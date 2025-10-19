@@ -298,7 +298,7 @@ You are free to modify or extend it for educational use.
 
 ---
 
-## 🆘 Support
+## 🆘 Supports
 
 For help or issues:
 
@@ -306,5 +306,4 @@ For help or issues:
 2. Check the backend and frontend setup steps above
 3. Open an issue on GitHub
 
-hai
 
