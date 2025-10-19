@@ -1,132 +1,220 @@
-# Hostel Complaint Management System
 
-A comprehensive web application for managing hostel complaints with role-based access control for students, parents, and administrators.
+# 🏠 Hostel Complaint Management System
+
+A **comprehensive web application** for managing hostel complaints with **role-based access** for students, parents, and administrators.
+
+---
 
 ## 🏗️ Architecture
 
-- **Frontend**: React + TypeScript + Vite
-- **Backend**: Java Spring Boot 3.2.0
-- **Database**: H2 (development) / MySQL (production)
-- **Authentication**: Firebase Authentication
-- **Security**: Spring Security with JWT tokens
+* **Frontend**: React + TypeScript + Vite
+* **Backend**: Spring Boot 3.2.0 (Java 17)
+* **Database**: H2 (in-memory for development)
+* **Authentication**: Firebase Authentication
+* **Security**: Spring Security with JWT tokens
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
+## 🚀 Quick Start Guide
 
-- **Node.js** (v16 or higher)
-- **Java 17** or higher
-- **Maven 3.6+**
-- **Firebase Account** (for authentication)
+This guide will walk you through setting up **Node.js**, **Maven**, **Java**, and **Firebase**, and running both frontend and backend.
 
-### 1. Clone the Repository
+---
+
+## ⚙️ Prerequisites
+
+Before running the project, make sure you have installed the following:
+
+### 1. **Node.js & npm**
+
+* Download from: [https://nodejs.org/](https://nodejs.org/)
+* Install the **LTS version (v16 or higher)**.
+* Verify installation:
+
+  ```bash
+  node -v
+  npm -v
+  ```
+* If not recognized, add Node.js path to environment variables:
+
+  ```
+  C:\Program Files\nodejs\
+  ```
+
+---
+
+### 2. **Java 17 or higher**
+
+* Download from: [https://adoptium.net/](https://adoptium.net/)
+* After installation, check version:
+
+  ```bash
+  java -version
+  ```
+* Add environment variables:
+
+  * **JAVA_HOME** → `C:\Program Files\Java\jdk-17`
+  * Add `%JAVA_HOME%\bin` to your system **Path**.
+
+---
+
+### 3. **Apache Maven 3.6+**
+
+* Download from: [https://maven.apache.org/download.cgi](https://maven.apache.org/download.cgi)
+* Extract Maven and add it to environment variables:
+
+  * **MAVEN_HOME** → path to extracted Maven folder (e.g. `C:\Program Files\Apache\Maven`)
+  * Add `%MAVEN_HOME%\bin` to your system **Path**.
+* Verify installation:
+
+  ```bash
+  mvn -v
+  ```
+
+---
+
+## 💻 Clone the Repository
 
 ```bash
 git clone https://github.com/Yazir-Musthafa/Hostel-Complaint-Management-System.git
-cd Hostel-Complaint-Management-System
+cd "Hostel Complaint Management System (1)"
 ```
 
-### 2. Backend Setup
+---
+
+## 🔥 Firebase Setup (Required)
+
+The application uses **Firebase Authentication** for login and signup.
+
+Follow these steps carefully **after cloning the project**:
+
+1. Go to the **[Firebase Console](https://console.firebase.google.com/)**
+2. Click **“Add Project”** and follow the setup steps
+3. Once the project is created, navigate to:
+   **Project Settings → Service Accounts**
+4. Click **“Generate new private key”** — this will download a JSON file
+5. Place this file inside your backend resources folder:
+
+   ```
+   Hostel Complaint Management System\backend\src\main\resources\
+   ```
+6. Rename it as:
+
+   ```
+   firebase-service-account.json
+   ```
+7. The file is already ignored in `.gitignore`, so it will **not be uploaded to GitHub** for security reasons.
+
+---
+
+## 🔧 Backend Setup (Spring Boot)
+
+Navigate to the backend folder and run the Spring Boot server:
 
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Run the Spring Boot application
 mvn spring-boot:run
 ```
 
-The backend will start on `http://localhost:3001`
+✅ The backend will start at:
 
-### 3. Frontend Setup
+```
+http://localhost:3001
+```
+
+---
+
+## 💾 Development Database (H2)
+
+The application uses an **in-memory H2 database** for easy testing and development.
+
+* **H2 Console**: [http://localhost:3001/h2-console](http://localhost:3001/h2-console)
+* **JDBC URL**: `jdbc:h2:mem:testdb`
+* **Username**: `sa`
+* **Password**: *(leave empty)*
+
+You can use the console to inspect data while the app is running.
+
+---
+
+## 🌐 Frontend Setup (React + TypeScript + Vite)
+
+Install dependencies and start the frontend server:
 
 ```bash
-# Install dependencies
+cd frontend
 npm install
-
-# Start development server
 npm run dev
 ```
 
-The frontend will start on `http://localhost:5173`
+✅ The frontend will start at:
 
-## 📊 Database Configuration
-
-### Development (H2 Database)
-The application is pre-configured to use H2 in-memory database for immediate testing:
-
-- **Database Console**: `http://localhost:3001/h2-console`
-- **JDBC URL**: `jdbc:h2:mem:testdb`
-- **Username**: `sa`
-- **Password**: (leave empty)
-
-### Production (MySQL)
-To use MySQL in production:
-
-1. Install MySQL Server
-2. Create database: `CREATE DATABASE hostel_complaint_db;`
-3. Update `backend/src/main/resources/application.properties`:
-
-```properties
-# Database Configuration
-spring.datasource.url=jdbc:mysql://localhost:3306/hostel_complaint_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-spring.datasource.username=root
-spring.datasource.password=your_password
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-
-# JPA Configuration
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
 ```
+http://localhost:5173
+```
+
+---
 
 ## 🔐 Authentication & Authorization
 
 ### User Roles
-- **Student**: Submit and track complaints
-- **Parent**: View child's complaints and provide feedback
-- **Admin**: Manage all complaints and users
+
+* 👨‍🎓 **Student**: Submit and track complaints
+* 👩‍👧 **Parent**: View their child’s complaints
+* 🧑‍💼 **Admin**: Manage all complaints and users
 
 ### Authentication Flow
-1. User registers/logs in through Firebase
+
+1. User registers or logs in using Firebase
 2. Backend validates Firebase token
-3. User data stored in local database
-4. JWT token issued for subsequent requests
+3. User data is stored in local database
+4. JWT token issued for authenticated requests
+
+---
 
 ## 🛠️ API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/login-with-token` - Firebase token login
 
-### Health Check
-- `GET /api/health` - Application health status
+| Method | Endpoint                     | Description                |
+| ------ | ---------------------------- | -------------------------- |
+| POST   | `/api/auth/register`         | Register a new user        |
+| POST   | `/api/auth/login`            | Login with credentials     |
+| POST   | `/api/auth/login-with-token` | Login using Firebase token |
 
-### Protected Endpoints
-All other endpoints require authentication via Bearer token.
+### Miscellaneous
+
+| Method | Endpoint      | Description               |
+| ------ | ------------- | ------------------------- |
+| GET    | `/api/health` | Application health status |
+
+🔒 All other routes require a valid JWT Bearer token.
+
+---
 
 ## 🏃‍♂️ Running the Application
 
 ### Development Mode
 
-1. **Start Backend**:
-   ```bash
-   cd backend
-   mvn spring-boot:run
-   ```
+```bash
+# Start backend
+cd backend
+mvn spring-boot:run
 
-2. **Start Frontend**:
-   ```bash
-   npm run dev
-   ```
+# Start frontend
+cd ../frontend
+npm run dev
+```
 
-3. **Access Application**:
-   - Frontend: `http://localhost:5173`
-   - Backend API: `http://localhost:3001`
-   - H2 Console: `http://localhost:3001/h2-console`
+Access the app:
 
-### Production Build
+* Frontend → [http://localhost:5173](http://localhost:5173)
+* Backend → [http://localhost:3001](http://localhost:3001)
+* H2 Console → [http://localhost:3001/h2-console](http://localhost:3001/h2-console)
+
+---
+
+### Production Mode
 
 ```bash
 # Build frontend
@@ -136,95 +224,84 @@ npm run build
 cd backend
 mvn clean package
 
-# Run production JAR
+# Run the JAR
 java -jar target/complaint-management-0.0.1-SNAPSHOT.jar
 ```
 
-## 🔧 Configuration Files
+---
 
-### Frontend Configuration
-- `src/services/authService.ts` - Authentication service
-- `vite.config.ts` - Vite configuration
+## 🧰 Configuration Files
 
-### Backend Configuration
-- `application.properties` - Main configuration
-- `application-dev.properties` - Development profile
-- `firebase-service-account.json` - Firebase credentials
+### Frontend
 
-## 🐛 Troubleshooting
+* `src/services/authService.ts` – Firebase + API authentication logic
+* `vite.config.ts` – Frontend build configuration
 
-### Common Issues
+### Backend
 
-1. **Backend won't start**:
-   - Ensure Java 17+ is installed
-   - Check if port 3001 is available
-   - Verify Firebase service account file exists
+* `application.properties` – Backend configuration
+* `firebase-service-account.json` – Firebase credentials (your own file)
+* `SecurityConfig.java` – Handles JWT and CORS configuration
 
-2. **Database connection errors**:
-   - For H2: No action needed (in-memory)
-   - For MySQL: Ensure MySQL server is running
+---
 
-3. **Authentication errors**:
-   - Verify Firebase configuration
-   - Check service account permissions
-   - Ensure CORS is properly configured
+## 🐞 Troubleshooting
 
-4. **Frontend can't connect to backend**:
-   - Verify backend is running on port 3001
-   - Check CORS configuration in SecurityConfig
-   - Ensure API_BASE_URL in authService.ts is correct
+| Problem                                | Possible Fix                                                          |
+| -------------------------------------- | --------------------------------------------------------------------- |
+| **Backend doesn’t start**              | Ensure Java 17+ and Maven are installed and environment variables set |
+| **H2 Console not loading**             | Verify backend is running on port 3001                                |
+| **Firebase authentication error**      | Check if `firebase-service-account.json` is in the correct folder     |
+| **Frontend not connecting to backend** | Verify backend is running and CORS is enabled                         |
+| **Port conflict**                      | Change backend port in `application.properties`                       |
 
-### Logs and Debugging
-
-- **Backend logs**: Check console output when running `mvn spring-boot:run`
-- **Frontend logs**: Check browser developer console
-- **Database**: Use H2 console to inspect data
+---
 
 ## 📁 Project Structure
 
 ```
-├── backend/                    # Spring Boot backend
-│   ├── src/main/java/
-│   │   └── com/hostel/complaint/
-│   │       ├── config/         # Configuration classes
-│   │       ├── controller/     # REST controllers
-│   │       ├── entity/         # JPA entities
-│   │       ├── repository/     # Data repositories
-│   │       ├── security/       # Security filters
-│   │       └── service/        # Business logic
+├── backend/
+│   ├── src/main/java/com/hostel/complaint/
+│   │   ├── config/
+│   │   ├── controller/
+│   │   ├── entity/
+│   │   ├── repository/
+│   │   ├── security/
+│   │   └── service/
 │   └── src/main/resources/
 │       ├── application.properties
 │       └── firebase-service-account.json
-├── src/                        # React frontend
-│   ├── components/             # React components
-│   ├── services/               # API services
-│   ├── types/                  # TypeScript types
-│   └── utils/                  # Utility functions
-├── BACKEND_SETUP_GUIDE.md      # Detailed backend setup
-└── README.md                   # This file
+├── frontend/
+│   ├── components/
+│   ├── services/
+│   ├── types/
+│   └── utils/
+└── README.md
 ```
+
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
+2. Create a new branch
+3. Implement your feature or fix
 4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is made for our college 
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Review the `BACKEND_SETUP_GUIDE.md`
-3. Create an issue on GitHub
+5. Submit a Pull Request
 
 ---
 
-hai
+## 📄 License
 
-**Note**: This application uses Firebase for authentication. Ensure you have proper Firebase configuration before running in production.
+This project was developed for **college academic purposes**.
+You are free to modify or extend it for educational use.
+
+---
+
+## 🆘 Support
+
+For help or issues:
+
+1. Review the **Troubleshooting** section
+2. Check the backend and frontend setup steps above
+3. Open an issue on GitHub
