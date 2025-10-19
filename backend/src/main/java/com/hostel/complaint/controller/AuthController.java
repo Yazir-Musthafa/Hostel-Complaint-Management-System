@@ -3,6 +3,9 @@ package com.hostel.complaint.controller;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.WriteResult;
 import com.hostel.complaint.entity.User;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -20,6 +25,9 @@ public class AuthController {
 
     @Autowired
     private FirebaseAuth firebaseAuth;
+
+    @Autowired
+    private Firestore firestore;
 
 
     // Login endpoint - Handles admin login with static credentials
@@ -94,21 +102,54 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            // Create user in Firebase directly - Firebase will handle duplicate email errors
-            UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                .setEmail(request.getEmail())
-                .setEmailVerified(true)
-                .setPassword(request.getPassword())
-                .setDisplayName(request.getName());
+            // Create user in Firebase Auth if firebaseUid is not provided
+            UserRecord firebaseUser = null;
+            String uid = request.getFirebaseUid();
+            
+            if (uid == null || uid.isEmpty()) {
+                // Create user in Firebase directly - Firebase will handle duplicate email errors
+                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                    .setEmail(request.getEmail())
+                    .setEmailVerified(true)
+                    .setPassword(request.getPassword())
+                    .setDisplayName(request.getName());
 
-            UserRecord firebaseUser = firebaseAuth.createUser(createRequest);
+                firebaseUser = firebaseAuth.createUser(createRequest);
+                uid = firebaseUser.getUid();
+            } else {
+                // Get existing Firebase user
+                firebaseUser = firebaseAuth.getUser(uid);
+            }
+
+            // Store user details in Firestore
+            Map<String, Object> userDocData = new HashMap<>();
+            userDocData.put("uid", uid);
+            userDocData.put("name", request.getName());
+            userDocData.put("email", request.getEmail());
+            userDocData.put("mobile", request.getMobile());
+            userDocData.put("studentId", request.getStudentId());
+            userDocData.put("roomNumber", request.getRoomNumber());
+            userDocData.put("block", request.getBlock());
+            userDocData.put("role", "student");
+            userDocData.put("active", true);
+            userDocData.put("createdAt", Instant.now().toString());
+            userDocData.put("updatedAt", Instant.now().toString());
+
+            // Save to Firestore users collection
+            DocumentReference docRef = firestore.collection("users").document(uid);
+            WriteResult result = docRef.set(userDocData).get();
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Registration successful! You can now login with your credentials.");
+            response.put("message", "Registration successful! User details stored in database.");
             response.put("user", Map.of(
-                "name", firebaseUser.getDisplayName(),
-                "email", firebaseUser.getEmail(),
+                "uid", uid,
+                "name", request.getName(),
+                "email", request.getEmail(),
+                "mobile", request.getMobile(),
+                "studentId", request.getStudentId(),
+                "roomNumber", request.getRoomNumber(),
+                "block", request.getBlock(),
                 "role", "student",
                 "active", true
             ));
@@ -134,6 +175,8 @@ public class AuthController {
                 }
             }
             return ResponseEntity.badRequest().body(createErrorResponse(errorMessage));
+        } catch (InterruptedException | ExecutionException e) {
+            return ResponseEntity.badRequest().body(createErrorResponse("Failed to store user data: " + e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(createErrorResponse("Registration failed: " + e.getMessage()));
         }

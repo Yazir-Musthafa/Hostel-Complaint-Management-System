@@ -1,6 +1,7 @@
 // Authentication service to communicate with backend
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 
 // Firebase config
 const firebaseConfig = {
@@ -15,6 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 const API_BASE_URL = 'http://localhost:3001/api/auth';
 
@@ -39,7 +41,7 @@ export interface AuthResponse {
   message: string;
   token?: string;
   user?: {
-    id: number;
+    id: string | number;
     name: string;
     email: string;
     mobile: string;
@@ -83,23 +85,47 @@ class AuthService {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
       const user = userCredential.user;
-      const idToken = await user.getIdToken();
+      const uid = user.uid;
 
-      const response = await fetch(`${API_BASE_URL}/login-with-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
+      // Get user details from Firestore
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      let userData = null;
 
-      const data = await response.json();
-      if (response.ok && data.success) {
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('userData', JSON.stringify(data.user));
-        localStorage.setItem('cachedStudentUser', JSON.stringify({ ...data.user, token: data.token }));
-        return data;
+      if (userDoc.exists()) {
+        userData = userDoc.data();
       } else {
-        return { success: false, message: data.error || 'Login failed', error: data.error };
+        // If user data doesn't exist in Firestore, create basic user data
+        userData = {
+          uid: uid,
+          name: user.displayName || 'Student',
+          email: user.email,
+          role: 'student',
+          active: true
+        };
       }
+
+      const responseData = {
+        success: true,
+        message: 'Login successful',
+        token: await user.getIdToken(),
+        user: {
+          id: uid,
+          name: userData.name,
+          email: userData.email,
+          mobile: userData.mobile || '',
+          role: userData.role || 'student',
+          studentId: userData.studentId || '',
+          roomNumber: userData.roomNumber || '',
+          block: userData.block || '',
+          active: userData.active !== false
+        }
+      };
+
+      localStorage.setItem('authToken', responseData.token);
+      localStorage.setItem('userData', JSON.stringify(responseData.user));
+      localStorage.setItem('cachedStudentUser', JSON.stringify({ ...responseData.user, token: responseData.token }));
+      
+      return responseData;
     } catch (error: any) {
       let errorMessage = 'Login failed';
       if (error.code) {
@@ -107,7 +133,8 @@ class AuthService {
           case 'auth/user-not-found': errorMessage = 'No user found with this email.'; break;
           case 'auth/wrong-password': errorMessage = 'Incorrect password.'; break;
           case 'auth/invalid-email': errorMessage = 'Invalid email address.'; break;
-          default: errorMessage = 'An unknown error occurred.';
+          case 'auth/too-many-requests': errorMessage = 'Too many failed login attempts. Please try again later.'; break;
+          default: errorMessage = 'An unknown error occurred during login.';
         }
       }
       return { success: false, message: errorMessage, error: errorMessage };
@@ -117,32 +144,70 @@ class AuthService {
   // Register method
   async register(registerData: RegisterRequest): Promise<AuthResponse> {
     try {
-      // Now, register the user in the backend
-      const response = await fetch(`${API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // First, create user with Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        registerData.email, 
+        registerData.password
+      );
+      
+      const user = userCredential.user;
+      const uid = user.uid;
+
+      // Store additional user details in Firestore
+      const userDocData = {
+        uid: uid,
+        name: registerData.name,
+        email: registerData.email,
+        mobile: registerData.mobile,
+        studentId: registerData.studentId,
+        roomNumber: registerData.roomNumber,
+        block: registerData.block,
+        role: 'student',
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Save to Firestore users collection directly from frontend
+      await setDoc(doc(db, 'users', uid), userDocData);
+
+      return {
+        success: true,
+        message: 'Registration successful! User details stored in database.',
+        user: {
+          id: uid,
+          name: registerData.name,
+          email: registerData.email,
+          mobile: registerData.mobile,
+          role: 'student',
+          studentId: registerData.studentId,
+          roomNumber: registerData.roomNumber,
+          block: registerData.block,
+          active: true
         },
-        body: JSON.stringify(registerData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        return {
-          success: true,
-          message: 'Registration successful!',
-          user: data.user,
-        };
-      } else {
-        return {
-          success: false,
-          message: data.error || 'Registration failed',
-          error: data.error || 'Registration failed',
-        };
-      }
+      };
     } catch (error: any) {
-      return { success: false, message: 'An unknown error occurred during registration.', error: 'An unknown error occurred during registration.' };
+      let errorMessage = 'Registration failed';
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = 'Email is already registered. Please use a different email.';
+            break;
+          case 'auth/weak-password':
+            errorMessage = 'Password is too weak. Please choose a stronger password.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Invalid email address.';
+            break;
+          case 'permission-denied':
+            errorMessage = 'Permission denied. Please check Firestore security rules.';
+            break;
+          default:
+            errorMessage = 'An unknown error occurred during registration.';
+        }
+      }
+      return { success: false, message: errorMessage, error: errorMessage };
     }
   }
 
