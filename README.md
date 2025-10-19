@@ -96,7 +96,7 @@ Follow these steps carefully **after cloning the project**:
 5. Place this file inside your backend resources folder:
 
    ```
-   C:\Users\yasir\OneDrive\Desktop\Hostel Complaint Management System (1)\backend\src\main\resources\
+   Hostel Complaint Management System\backend\src\main\resources\
    ```
 6. Rename it as:
 
