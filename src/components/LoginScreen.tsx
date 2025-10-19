@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState } from 'react';
+import ConfirmDialog from './shared/ConfirmDialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,15 +9,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Users, Shield, User, Phone, UserPlus } from 'lucide-react';
 import authService from '../services/authService';
 
-// Utility to get cached user data
+// Utility to get/set cached user data
 function getCachedUser() {
   const adminData = localStorage.getItem('cachedAdminUser');
   const studentData = localStorage.getItem('cachedStudentUser');
-  return { 
+  return {
     admin: adminData ? JSON.parse(adminData) : null,
-    student: studentData ? JSON.parse(studentData) : null
+    student: studentData ? JSON.parse(studentData) : null,
   };
 }
+
+function setCachedUser(role, userData) {
+  if (role === 'admin') {
+    localStorage.setItem('cachedAdminUser', JSON.stringify(userData));
+  } else if (role === 'student') {
+    localStorage.setItem('cachedStudentUser', JSON.stringify(userData));
+  }
+}
+
+function clearCachedUsers() {
+  localStorage.removeItem('cachedAdminUser');
+  localStorage.removeItem('cachedStudentUser');
+  alert('Cached data has been cleared.');
+}
+
 
 interface LoginScreenProps {
   onLogin: (user: any, role: 'admin' | 'student' | 'parent') => void;
@@ -32,15 +48,16 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     mobile: '',
     password: ''
   });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   // On mount, check for cached tokens and redirect
   React.useEffect(() => {
     const { admin, student } = getCachedUser();
     if (selectedRole === 'admin' && admin) {
-      onLogin({ token: admin }, 'admin');
-    }
-    if (selectedRole === 'student' && student) {
-      onLogin({ token: student }, 'student');
+      onLogin(admin, 'admin');
+    } else if (selectedRole === 'student' && student) {
+      onLogin(student, 'student');
     }
   }, [selectedRole, onLogin]);
 
@@ -117,6 +134,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           token: response.token,
           mobile: loginData.mobile || response.user.mobile
         };
+        
+        // Cache user data
+        setCachedUser(userRole, userData);
 
         onLogin(userData, userRole);
       } else {
@@ -151,14 +171,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         block: signupData.block
       });
 
-      if (response.success && response.user) {
-        // Create user data object for onLogin callback
-        const userData = {
-          ...response.user,
-          token: response.token
-        };
-
-        onLogin(userData, 'student');
+      if (response.success) {
+        // Registration successful - show success message and redirect to login
+        setSignupSuccess(true);
       } else {
         setError(response.error || 'Registration failed');
       }
@@ -303,9 +318,29 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   <span className="font-medium">Login with Credentials</span>
                 </Button>
               </div>
+              <div className="text-center mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsConfirmOpen(true)}
+                  className="w-full h-12 mt-4 bg-white text-black border border-red-500 hover:bg-red-500 hover:text-white flex items-center gap-3 btn-professional"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="font-medium">Clear Cached Data</span>
+                </Button>
+              </div>
             </div>
           </div>
         )}
+        <ConfirmDialog
+          isOpen={isConfirmOpen}
+          onClose={() => setIsConfirmOpen(false)}
+          onConfirm={() => {
+            clearCachedUsers();
+            setIsConfirmOpen(false);
+          }}
+          title="Are you sure?"
+          description="This will clear all cached login data. You will need to log in again next time."
+        />
 
         {/* Login Form */}
         {showManualLogin && !showSignup && (
@@ -328,19 +363,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                     className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     required
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mobile" className="text-responsive-sm font-medium">Mobile Number (Optional)</Label>
-                  <Input
-                    id="mobile"
-                    type="tel"
-                    placeholder="+1 234 567 8900"
-                    value={loginData.mobile}
-                    onChange={(e) => setLoginData({ ...loginData, mobile: e.target.value })}
-                    className="bg-muted/30 border-border/50 focus:bg-background transition-colors h-12"
                     disabled={loading}
                   />
                 </div>
@@ -397,7 +419,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         )}
 
         {/* Student Signup Form */}
-        {showSignup && (
+        {showSignup && !signupSuccess && (
           <Card className="card-professional card-shadow-lg">
             <CardHeader className="space-y-3 pb-6">
               <CardTitle className="text-responsive-base font-semibold text-center">Student Registration</CardTitle>
@@ -549,6 +571,26 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   </button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {signupSuccess && (
+          <Card className="card-professional card-shadow-lg">
+            <CardHeader>
+              <CardTitle>Registration Successful!</CardTitle>
+              <CardDescription>
+                Your account has been created successfully. You can now login with your credentials.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => {
+                setShowSignup(false);
+                setSignupSuccess(false);
+                setShowManualLogin(true);
+              }}>
+                Go to Login
+              </Button>
             </CardContent>
           </Card>
         )}

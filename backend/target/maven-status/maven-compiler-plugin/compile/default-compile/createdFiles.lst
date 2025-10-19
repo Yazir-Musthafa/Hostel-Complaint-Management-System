@@ -1,17 +1,8 @@
-com\hostel\complaint\security\FirebaseAuthenticationFilter.class
-com\hostel\complaint\repository\ComplaintRepository.class
-com\hostel\complaint\controller\AuthController.class
 com\hostel\complaint\config\FirebaseConfig.class
-com\hostel\complaint\controller\AuthController$RegisterRequest.class
-com\hostel\complaint\controller\AuthController$LoginRequest.class
 com\hostel\complaint\entity\Complaint$Priority.class
 com\hostel\complaint\entity\User.class
 com\hostel\complaint\entity\Complaint$Status.class
 com\hostel\complaint\entity\Complaint.class
 com\hostel\complaint\entity\User$Relationship.class
-com\hostel\complaint\repository\UserRepository.class
-com\hostel\complaint\controller\AuthController$TokenLoginRequest.class
 com\hostel\complaint\HostelComplaintApplication.class
-com\hostel\complaint\config\SecurityConfig.class
 com\hostel\complaint\entity\User$Role.class
-com\hostel\complaint\service\UserService.class

@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 // Import new components
 import { PageHeader } from './shared/PageHeader';
 import { FilterBar } from './shared/FilterBar';
-import { ConfirmDialog } from './shared/ConfirmDialog';
+import ConfirmDialog from './shared/ConfirmDialog';
 import { SubmitComplaintForm } from './student/SubmitComplaintForm';
 import { ComplaintCard } from './student/ComplaintCard';
 import { ComplaintDetailView } from './student/ComplaintDetailView';
@@ -311,14 +311,11 @@ export default function StudentDashboard({ user, onLogout }: StudentDashboardPro
 
       {/* Confirm Cancel Dialog */}
       <ConfirmDialog
-        open={confirmCancel.open}
-        onOpenChange={(open) => setConfirmCancel({ open, complaintId: null })}
+        isOpen={confirmCancel.open}
+        onClose={() => setConfirmCancel({ open: false, complaintId: null })}
         title="Cancel Complaint"
         description="Are you sure you want to cancel this complaint? This action cannot be undone."
-        confirmText="Cancel Complaint"
-        cancelText="Keep Complaint"
         onConfirm={() => confirmCancel.complaintId && handleCancelComplaint(confirmCancel.complaintId)}
-        destructive
       />
     </div>
   );

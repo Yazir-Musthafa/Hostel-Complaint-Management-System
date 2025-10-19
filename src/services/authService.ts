@@ -31,6 +31,7 @@ export interface RegisterRequest {
   studentId: string;
   roomNumber: string;
   block: string;
+  firebaseUid: string;
 }
 
 export interface AuthResponse {
@@ -52,79 +53,71 @@ export interface AuthResponse {
 }
 
 class AuthService {
-  // Login method - authenticate with Firebase first, then verify with backend
+  // Login method - handles both admin and student login
   async login(loginData: LoginRequest): Promise<AuthResponse> {
+    // Special case for admin login
+    if (loginData.email === 'admin@gmail.com') {
+      try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(loginData),
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('userData', JSON.stringify(data.user));
+          localStorage.setItem('cachedAdminUser', JSON.stringify({ ...data.user, token: data.token }));
+          return data;
+        } else {
+          return { success: false, message: data.error || 'Admin login failed', error: data.error };
+        }
+      } catch (error) {
+        return { success: false, message: 'Network error', error: 'Network error' };
+      }
+    }
+
+    // Standard student login with Firebase
     try {
-      // First, authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
       const user = userCredential.user;
       const idToken = await user.getIdToken();
 
-      // Then, verify with backend using the Firebase ID token
       const response = await fetch(`${API_BASE_URL}/login-with-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
 
       const data = await response.json();
-      
       if (response.ok && data.success) {
-        // Store token and user data in localStorage
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('userData', JSON.stringify(data.user));
-        
-        // Cache user data based on role for backward compatibility
-        if (data.user.role === 'admin') {
-          localStorage.setItem('cachedAdminUser', JSON.stringify({
-            ...data.user,
-            token: data.token
-          }));
-        } else if (data.user.role === 'student') {
-          localStorage.setItem('cachedStudentUser', JSON.stringify({
-            ...data.user,
-            token: data.token
-          }));
-        }
-        
+        localStorage.setItem('cachedStudentUser', JSON.stringify({ ...data.user, token: data.token }));
         return data;
       } else {
-        return {
-          success: false,
-          message: data.error || 'Login failed',
-          error: data.error || 'Login failed'
-        };
+        return { success: false, message: data.error || 'Login failed', error: data.error };
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      
-      // Handle Firebase authentication errors
       let errorMessage = 'Login failed';
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No user found with this email address';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
-      } else if (error.code === 'auth/user-disabled') {
-        errorMessage = 'This account has been disabled';
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found': errorMessage = 'No user found with this email.'; break;
+          case 'auth/wrong-password': errorMessage = 'Incorrect password.'; break;
+          case 'auth/invalid-email': errorMessage = 'Invalid email address.'; break;
+          default: errorMessage = 'An unknown error occurred.';
+        }
       }
-      
-      return {
-        success: false,
-        message: errorMessage,
-        error: errorMessage
-      };
+      return { success: false, message: errorMessage, error: errorMessage };
     }
   }
 
   // Register method
   async register(registerData: RegisterRequest): Promise<AuthResponse> {
     try {
+      // Now, register the user in the backend
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
@@ -134,33 +127,22 @@ class AuthService {
       });
 
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
-        // Store token and user data in localStorage
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('userData', JSON.stringify(data.user));
-        
-        // Cache student user data for backward compatibility
-        localStorage.setItem('cachedStudentUser', JSON.stringify({
-          ...data.user,
-          token: data.token
-        }));
-        
-        return data;
+        return {
+          success: true,
+          message: 'Registration successful!',
+          user: data.user,
+        };
       } else {
         return {
           success: false,
           message: data.error || 'Registration failed',
-          error: data.error || 'Registration failed'
+          error: data.error || 'Registration failed',
         };
       }
-    } catch (error) {
-      console.error('Registration error:', error);
-      return {
-        success: false,
-        message: 'Network error occurred',
-        error: 'Network error occurred'
-      };
+    } catch (error: any) {
+      return { success: false, message: 'An unknown error occurred during registration.', error: 'An unknown error occurred during registration.' };
     }
   }
 
@@ -189,6 +171,7 @@ class AuthService {
     const user = this.getCurrentUser();
     return !!(token && user);
   }
+
 
   // Get cached user data (for backward compatibility)
   getCachedUser() {

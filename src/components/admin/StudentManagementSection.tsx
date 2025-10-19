@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '../ui/label';
 import { FilterBar } from '../shared/FilterBar';
 import { LoadingButton } from '../shared/LoadingButton';
-import { ConfirmDialog } from '../shared/ConfirmDialog';
+import ConfirmDialog from '../shared/ConfirmDialog';
 import { 
   UserPlus, 
   Eye, 
@@ -225,7 +225,7 @@ export const StudentManagementSection: React.FC<StudentManagementSectionProps> =
             
             <Select 
               value={filters.block} 
-              onValueChange={(value) => setFilters(prev => ({ ...prev, block: value }))}
+              onValueChange={(value: string) => setFilters(prev => ({ ...prev, block: value }))}
             >
               <SelectTrigger className="w-full lg:w-48">
                 <SelectValue placeholder="All Blocks" />
@@ -241,7 +241,7 @@ export const StudentManagementSection: React.FC<StudentManagementSectionProps> =
 
             <Select 
               value={filters.status} 
-              onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+              onValueChange={(value: string) => setFilters(prev => ({ ...prev, status: value }))}
             >
               <SelectTrigger className="w-full lg:w-48">
                 <SelectValue placeholder="All Status" />
@@ -374,20 +374,17 @@ export const StudentManagementSection: React.FC<StudentManagementSectionProps> =
 
       {/* Confirm Action Dialog */}
       <ConfirmDialog
-        open={confirmAction.open}
-        onOpenChange={(open) => setConfirmAction({ open, action: null, student: null })}
+        isOpen={confirmAction.open}
+        onClose={() => setConfirmAction({ open: false, action: null, student: null })}
         title={`${confirmAction.action === 'deactivate' ? 'Deactivate' : 'Activate'} Student`}
         description={`Are you sure you want to ${confirmAction.action} ${confirmAction.student?.name}? ${
           confirmAction.action === 'deactivate' 
             ? 'This will prevent them from logging in and submitting complaints.'
             : 'This will restore their access to the system.'
         }`}
-        confirmText={confirmAction.action === 'deactivate' ? 'Deactivate' : 'Activate'}
-        cancelText="Cancel"
         onConfirm={() => confirmAction.action && confirmAction.student && 
           handleStudentAction(confirmAction.action, confirmAction.student)
         }
-        destructive={confirmAction.action === 'deactivate'}
       />
     </div>
   );
@@ -496,7 +493,7 @@ const StudentModal: React.FC<StudentModalProps> = ({
                 <Label htmlFor="block">Block</Label>
                 <Select 
                   value={formData.block || ''} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, block: value }))}
+                  onValueChange={(value: string) => setFormData(prev => ({ ...prev, block: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Block" />

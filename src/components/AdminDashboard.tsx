@@ -42,7 +42,7 @@ import { AdminSidebar } from './admin/AdminSidebar';
 import { ComplaintDetailsModal } from './admin/ComplaintDetailsModal';
 import { FilterBar } from './shared/FilterBar';
 import { LoadingButton } from './shared/LoadingButton';
-import { ConfirmDialog } from './shared/ConfirmDialog';
+import ConfirmDialog from './shared/ConfirmDialog';
 import { AnalyticsSection } from './admin/AnalyticsSection';
 import { SystemSettingsSection } from './admin/SystemSettingsSection';
 import { StudentManagementSection } from './admin/StudentManagementSection';
@@ -550,14 +550,11 @@ function ComplaintsSection({ complaints, filters, onFiltersChange, onViewComplai
       </Tabs>
 
       <ConfirmDialog
-        open={confirmDelete.open}
-        onOpenChange={(open) => setConfirmDelete({ open, complaintId: null })}
+        isOpen={confirmDelete.open}
+        onClose={() => setConfirmDelete({ open: false, complaintId: null })}
         title="Delete Complaint"
         description="Are you sure you want to delete this complaint? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
         onConfirm={() => confirmDelete.complaintId && handleDeleteComplaint(confirmDelete.complaintId)}
-        destructive
       />
     </div>
   );

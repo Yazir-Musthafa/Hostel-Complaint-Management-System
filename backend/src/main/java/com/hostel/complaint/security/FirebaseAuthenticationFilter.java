@@ -4,7 +4,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.hostel.complaint.entity.User;
-import com.hostel.complaint.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,8 +34,6 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private FirebaseAuth firebaseAuth;
 
-    @Autowired
-    private UserService userService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
@@ -52,29 +49,29 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                 
                 logger.debug("Firebase token verified for user: {}", email);
                 
-                // Get user from database
-                Optional<User> userOptional = userService.findByFirebaseUid(firebaseUid);
-                
-                if (userOptional.isPresent()) {
-                    User user = userOptional.get();
-                    
-                    // Create authentication token
+                // Handle admin user with a special UID
+                if ("admin_user_uid".equals(firebaseUid)) {
                     List<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                        new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                    );
+                    UsernamePasswordAuthenticationToken authentication = 
+                        new UsernamePasswordAuthenticationToken(email, null, authorities);
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    logger.debug("Admin user authenticated: {}", email);
+                } else {
+                    // Regular user authentication
+                    List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_STUDENT")
                     );
                     
                     UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(user, null, authorities);
+                        new UsernamePasswordAuthenticationToken(email, null, authorities);
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     
-                    logger.debug("User authenticated: {} with role: {}", user.getEmail(), user.getRole());
-                } else {
-                    logger.warn("User not found in database for Firebase UID: {}", firebaseUid);
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"error\":\"User not registered in system\"}");
-                    return;
+                    logger.debug("User authenticated: {} with role: STUDENT", email);
                 }
             }
         } catch (FirebaseAuthException e) {

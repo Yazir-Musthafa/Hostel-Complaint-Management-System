@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { LoadingButton } from '../shared/LoadingButton';
-import { ConfirmDialog } from '../shared/ConfirmDialog';
+import ConfirmDialog from '../shared/ConfirmDialog';
 import { 
   Settings, 
   Mail, 
@@ -212,7 +212,7 @@ export const SystemSettingsSection: React.FC = () => {
               </div>
               <Switch 
                 checked={notificationSettings.emailNotifications}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked: boolean) => 
                   setNotificationSettings(prev => ({ ...prev, emailNotifications: checked }))
                 }
               />
@@ -224,7 +224,7 @@ export const SystemSettingsSection: React.FC = () => {
               </div>
               <Switch 
                 checked={notificationSettings.priorityAlerts}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked: boolean) => 
                   setNotificationSettings(prev => ({ ...prev, priorityAlerts: checked }))
                 }
               />
@@ -236,7 +236,7 @@ export const SystemSettingsSection: React.FC = () => {
               </div>
               <Switch 
                 checked={notificationSettings.dailySummary}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked: boolean) => 
                   setNotificationSettings(prev => ({ ...prev, dailySummary: checked }))
                 }
               />
@@ -248,7 +248,7 @@ export const SystemSettingsSection: React.FC = () => {
               </div>
               <Switch 
                 checked={notificationSettings.smsAlerts}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked: boolean) => 
                   setNotificationSettings(prev => ({ ...prev, smsAlerts: checked }))
                 }
               />
@@ -360,14 +360,11 @@ export const SystemSettingsSection: React.FC = () => {
 
       {/* Confirm Dialog */}
       <ConfirmDialog
-        open={confirmAction.open}
-        onOpenChange={(open) => setConfirmAction(prev => ({ ...prev, open }))}
+        isOpen={confirmAction.open}
+        onClose={() => setConfirmAction(prev => ({ ...prev, open: false }))}
         title={confirmAction.title}
         description={confirmAction.description}
-        confirmText="Proceed"
-        cancelText="Cancel"
         onConfirm={() => handleSystemAction(confirmAction.action)}
-        destructive={confirmAction.action === 'archiveComplaints'}
       />
     </div>
   );
