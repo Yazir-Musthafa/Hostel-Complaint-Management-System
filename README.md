@@ -225,4 +225,6 @@ For issues and questions:
 
 ---
 
+hai
+
 **Note**: This application uses Firebase for authentication. Ensure you have proper Firebase configuration before running in production.
