@@ -6,6 +6,7 @@ import com.google.firebase.auth.UserRecord;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.WriteResult;
+import com.hostel.complaint.entity.Student;
 import com.hostel.complaint.entity.User;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.time.Instant;
 
@@ -29,113 +29,55 @@ public class AuthController {
     @Autowired
     private Firestore firestore;
 
-
-    // Login endpoint - Handles admin login with static credentials
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            // Admin login logic
-            if ("admin@gmail.com".equals(request.getEmail()) && "admin".equals(request.getPassword())) {
-                // Use a fixed UID for the admin user for token generation
-                String adminUid = "admin_user_uid";
-                String customToken = firebaseAuth.createCustomToken(adminUid);
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("message", "Admin login successful");
-                response.put("token", customToken);
-                response.put("user", Map.of(
-                    "name", "Admin",
-                    "email", "admin@gmail.com",
-                    "role", "admin",
-                    "active", true
-                ));
-                return ResponseEntity.ok(response);
-            }
-
-            // For students, this endpoint should not be used for password-based login from the backend.
-            // The frontend should handle login with Firebase Auth SDK and send the ID token to /api/auth/login-with-token.
-            // However, to maintain some compatibility if the old flow is still used, we can check.
-            // A better approach is to return an error for non-admin users.
-            
-            return ResponseEntity.badRequest().body(createErrorResponse("Invalid credentials"));
-
-        } catch (FirebaseAuthException e) {
-            return ResponseEntity.badRequest().body(createErrorResponse("Authentication failed: " + e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(createErrorResponse("Login failed: " + e.getMessage()));
-        }
-    }
-
-    // Alternative login endpoint that accepts Firebase ID token for verification
-    @PostMapping("/login-with-token")
-    public ResponseEntity<?> loginWithToken(@Valid @RequestBody TokenLoginRequest request) {
-        try {
-            // Verify the Firebase ID token
-            com.google.firebase.auth.FirebaseToken decodedToken = firebaseAuth.verifyIdToken(request.getIdToken());
-            String uid = decodedToken.getUid();
-
-            // Get user info from Firebase
-            UserRecord firebaseUser = firebaseAuth.getUser(uid);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Login successful");
-            response.put("token", request.getIdToken());
-            response.put("user", Map.of(
-                "name", firebaseUser.getDisplayName(),
-                "email", firebaseUser.getEmail(),
-                "role", "student",
-                "active", true
-            ));
-
-            return ResponseEntity.ok(response);
-            
-        } catch (FirebaseAuthException e) {
-            return ResponseEntity.badRequest().body(createErrorResponse("Invalid token: " + e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(createErrorResponse("Login failed: " + e.getMessage()));
-        }
-    }
-
-    // Registration endpoint
+    // ------------------ Registration ------------------
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            // Create user in Firebase Auth if firebaseUid is not provided
             UserRecord firebaseUser = null;
             String uid = request.getFirebaseUid();
-            
-            if (uid == null || uid.isEmpty()) {
-                // Create user in Firebase directly - Firebase will handle duplicate email errors
-                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                    .setEmail(request.getEmail())
-                    .setEmailVerified(true)
-                    .setPassword(request.getPassword())
-                    .setDisplayName(request.getName());
 
+            if (uid == null || uid.isEmpty()) {
+                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                        .setEmail(request.getEmail())
+                        .setEmailVerified(true)
+                        .setPassword(request.getPassword())
+                        .setDisplayName(request.getName());
                 firebaseUser = firebaseAuth.createUser(createRequest);
                 uid = firebaseUser.getUid();
             } else {
-                // Get existing Firebase user
                 firebaseUser = firebaseAuth.getUser(uid);
             }
 
-            // Store user details in Firestore
+            // ----------------------------
+            // Create Student object immediately
+            // ----------------------------
+            Student newStudent = new Student(
+                    uid,
+                    request.getName(),
+                    request.getEmail(),
+                    request.getStudentId(),
+                    request.getRoomNumber(),
+                    request.getBlock()
+            );
+            newStudent.setMobile(request.getMobile());
+            newStudent.setActive(true);
+
+            // ----------------------------
+            // Save to Firestore
+            // ----------------------------
             Map<String, Object> userDocData = new HashMap<>();
             userDocData.put("uid", uid);
-            userDocData.put("name", request.getName());
-            userDocData.put("email", request.getEmail());
-            userDocData.put("mobile", request.getMobile());
-            userDocData.put("studentId", request.getStudentId());
-            userDocData.put("roomNumber", request.getRoomNumber());
-            userDocData.put("block", request.getBlock());
+            userDocData.put("name", newStudent.getName());
+            userDocData.put("email", newStudent.getEmail());
+            userDocData.put("mobile", newStudent.getMobile());
+            userDocData.put("studentId", newStudent.getStudentId());
+            userDocData.put("roomNumber", newStudent.getRoom());
+            userDocData.put("block", newStudent.getBlock());
             userDocData.put("role", "student");
             userDocData.put("active", true);
             userDocData.put("createdAt", Instant.now().toString());
             userDocData.put("updatedAt", Instant.now().toString());
 
-            // Save to Firestore users collection
             DocumentReference docRef = firestore.collection("users").document(uid);
             WriteResult result = docRef.set(userDocData).get();
 
@@ -143,21 +85,20 @@ public class AuthController {
             response.put("success", true);
             response.put("message", "Registration successful! User details stored in database.");
             response.put("user", Map.of(
-                "uid", uid,
-                "name", request.getName(),
-                "email", request.getEmail(),
-                "mobile", request.getMobile(),
-                "studentId", request.getStudentId(),
-                "roomNumber", request.getRoomNumber(),
-                "block", request.getBlock(),
-                "role", "student",
-                "active", true
+                    "uid", uid,
+                    "name", newStudent.getName(),
+                    "email", newStudent.getEmail(),
+                    "mobile", newStudent.getMobile(),
+                    "studentId", newStudent.getStudentId(),
+                    "roomNumber", newStudent.getRoom(),
+                    "block", newStudent.getBlock(),
+                    "role", "student",
+                    "active", true
             ));
 
             return ResponseEntity.ok(response);
 
         } catch (FirebaseAuthException e) {
-            // Handle Firebase-specific errors
             String errorMessage = "Registration failed";
             if (e.getErrorCode() != null) {
                 switch (e.getErrorCode().name()) {
@@ -182,33 +123,12 @@ public class AuthController {
         }
     }
 
-    // Helper method to create error response
+    // ------------------ Helpers ------------------
     private Map<String, Object> createErrorResponse(String message) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
         response.put("error", message);
         return response;
-    }
-
-
-    // DTO for login
-    public static class LoginRequest {
-        private String email;
-        private String password;
-
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
-    }
-
-    // DTO for token-based login
-    public static class TokenLoginRequest {
-        private String idToken;
-
-        public String getIdToken() { return idToken; }
-        public void setIdToken(String idToken) { this.idToken = idToken; }
     }
 
     // DTO for registration
@@ -222,6 +142,7 @@ public class AuthController {
         private String block;
         private String firebaseUid;
 
+        // Getters and setters
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
 

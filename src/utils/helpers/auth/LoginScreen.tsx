@@ -1,13 +1,13 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import ConfirmDialog from './shared/ConfirmDialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import ConfirmDialog from '@/components/shared/ConfirmDialog.tsx';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Shield, User, Phone, UserPlus } from 'lucide-react';
-import authService from '../services/authService';
+import authService from '../../../services/authService';
 
 // Utility to get/set cached user data
 function getCachedUser() {
