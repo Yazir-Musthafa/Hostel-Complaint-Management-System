@@ -1,7 +1,7 @@
 // Authentication service to communicate with backend
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 // Firebase config
 const firebaseConfig = {
@@ -54,6 +54,21 @@ export interface AuthResponse {
   error?: string;
 }
 
+// Define a type for student data fetched from Firestore
+export interface StudentData {
+  uid: string;
+  name: string;
+  email: string;
+  mobile: string;
+  studentId: string;
+  roomNumber: string;
+  block: string;
+  role: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class AuthService {
   // Login method - handles both admin and student login
   async login(loginData: LoginRequest): Promise<AuthResponse> {
@@ -100,10 +115,20 @@ class AuthService {
           name: user.displayName || 'Student',
           email: user.email,
           role: 'student',
-          active: true
+          active: true // Default to active if not found
         };
       }
 
+      // Check if the user account is active
+      if (!userData) {
+          // This case should ideally not happen if default is created, but as a safeguard
+          return { success: false, message: 'User data not found.', error: 'User data missing' };
+      }
+      if (userData.active === false) {
+        return { success: false, message: 'Your account has been deactivated. Please contact the administrator.', error: 'Account deactivated' };
+      }
+
+      // If active, proceed to construct responseData
       const responseData = {
         success: true,
         message: 'Login successful',
@@ -117,7 +142,7 @@ class AuthService {
           studentId: userData.studentId || '',
           roomNumber: userData.roomNumber || '',
           block: userData.block || '',
-          active: userData.active !== false
+          active: userData.active !== false // This will be true if we passed the check
         }
       };
 
@@ -237,6 +262,72 @@ class AuthService {
     return !!(token && user);
   }
 
+  // Fetch all students from Firestore
+  async getAllStudents(): Promise<AuthResponse> {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('role', '==', 'student'));
+      const querySnapshot = await getDocs(q);
+      
+      const students: StudentData[] = [];
+      querySnapshot.forEach((doc) => {
+        students.push({ uid: doc.id, ...doc.data() } as StudentData);
+      });
+
+      return { success: true, message: 'Students fetched successfully', user: students as any }; // Casting to any for now, will refine if needed
+    } catch (error: any) {
+      console.error("Error fetching students: ", error);
+      return { success: false, message: 'Failed to fetch students', error: error.message };
+    }
+  }
+
+  // Update student's active status
+  async updateStudentStatus(studentId: string, isActive: boolean): Promise<AuthResponse> {
+    try {
+      const userDocRef = doc(db, 'users', studentId);
+      await updateDoc(userDocRef, {
+        active: isActive,
+        updatedAt: new Date().toISOString()
+      });
+      return { success: true, message: `Student ${isActive ? 'activated' : 'deactivated'} successfully.` };
+    } catch (error: any) {
+      console.error("Error updating student status: ", error);
+      return { success: false, message: 'Failed to update student status', error: error.message };
+    }
+  }
+
+  // Method to activate a student
+  async activateStudent(studentId: string): Promise<AuthResponse> {
+    return this.updateStudentStatus(studentId, true);
+  }
+
+  // Method to deactivate a student
+  async deactivateStudent(studentId: string): Promise<AuthResponse> {
+    return this.updateStudentStatus(studentId, false);
+  }
+
+  // Validate user's active status from Firestore
+  async validateUserActiveStatus(userId: string): Promise<AuthResponse> {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      
+      if (!userDoc.exists()) {
+        return { success: false, message: 'User not found.', error: 'User not found' };
+      }
+
+      const userData = userDoc.data();
+
+      if (userData.active === false) {
+        return { success: false, message: 'Your account has been deactivated. Please contact the administrator.', error: 'Account deactivated' };
+      }
+
+      // If active, return a success response
+      return { success: true, message: 'User is active.' };
+    } catch (error: any) {
+      console.error("Error validating user active status: ", error);
+      return { success: false, message: 'Failed to validate user status', error: error.message };
+    }
+  }
 
   // Get cached user data (for backward compatibility)
   getCachedUser() {
