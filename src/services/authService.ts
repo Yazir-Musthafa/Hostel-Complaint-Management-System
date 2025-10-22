@@ -329,6 +329,16 @@ class AuthService {
     }
   }
 
+  // Validate cached user data for active status
+  async validateCachedUser(cachedUser: any): Promise<AuthResponse> {
+    if (!cachedUser || !cachedUser.id) {
+      return { success: false, message: 'Invalid cached user data.', error: 'Invalid data' };
+    }
+
+    // Use the existing method to validate the user's active status from Firestore
+    return this.validateUserActiveStatus(cachedUser.id);
+  }
+
   // Get cached user data (for backward compatibility)
   getCachedUser() {
     const adminData = localStorage.getItem('cachedAdminUser');
